@@ -1,22 +1,31 @@
 // React.memo for reducing unnecessary re-renders
-// http://localhost:3000/isolated/exercise/03.js
+// Exercise 3 Extra Credit 1
 
 import * as React from 'react'
 import {useCombobox} from '../use-combobox'
 import {getItems} from '../workerized-filter-cities'
 import {useAsync, useForceRerender} from '../utils'
 
-// Exercise
-// In this exercise, pull up the React DevTools and observe when you click the
-// “force rerender” button, the Downshift, Menu, and ListItem components are all
-// re-rendered even though no DOM updates were needed. This is an unnecessary re-render
-// and a bottleneck in our application (especially if we want to start showing all of
-//  the results rather than just the first 100… I’ve heard rumors that the product
-// manager 👨‍💼 wants us to do that). If you enable 6x throttle on the CPU (under the
-// Performance tab in Chrome DevTools) then you’ll notice the issue is more stark.
+// Extra Credit
+// 1. 💯 Use a custom comparator function
 
-// Your job is to optimize the Menu and ListItem components to be memoized via React.memo.
-// Make note of the before/after render times.
+// You’ll notice that as you hover over the elements in the list (or click the input and
+// press the down and up arrow) the highlightedIndex changes. This prop changes for all
+// the ListItem components, but it doesn’t mean that they all need DOM updates. The only
+// ListItems that need a DOM update are 1) the old highlighted item, and 2) the new
+// highlighted item.
+
+// Luckily for us, React.memo accepts a second argument which is a custom compare function
+// that allows us to compare the props and return true if rendering the component again is
+// unnecessary and false if it is necessary.
+
+// See if you can figure out how to use that function to make it so changing the highlighted
+// index only re-renders the components that need the change.
+
+// NOTE: You can do the same for selectedItem, though that one may be tricker to test and
+// I tried it and couldn’t get it to work 😅 I spent 20 minutes on it before giving up!
+// Maybe you can figure it out though. This is why these are OPTIMIZATIONS and not to be
+// applied in every case. They’re hard to get right and easy to mess up and create bugs!
 
 function Menu({
   items,
@@ -70,7 +79,30 @@ function ListItem({
   )
 }
 
-ListItem = React.memo(ListItem)
+ListItem = React.memo(ListItem, (prevProps, nextProps) => {
+  if (prevProps.getItemProps !== nextProps.getItemsProps) {
+    return false
+  }
+  if (prevProps.item !== nextProps.item) {
+    return false
+  }
+  if (prevProps.index !== nextProps.index) {
+    return false
+  }
+  if (prevProps.selectedItem !== nextProps.selectedItem) {
+    return false
+  }
+
+  // ListItems that need a DOM update are 1) the old highlighted item, and 2) the new
+  // highlighted item.
+  if (prevProps.highlightedIndex !== nextProps.highlightedIndex) {
+    const oldHighlightedItem = prevProps.highlightedIndex === prevProps.index
+    const newHightlightedItem = nextProps.highlightedIndex === nextProps.index
+    return oldHighlightedItem === newHightlightedItem
+  }
+
+  return true
+})
 
 function App() {
   const forceRerender = useForceRerender()
@@ -128,13 +160,3 @@ function App() {
 }
 
 export default App
-
-/*
-eslint
-  no-func-assign: 0,
-*/
-
-
-
-
-

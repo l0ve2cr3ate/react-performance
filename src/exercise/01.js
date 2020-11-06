@@ -2,19 +2,34 @@
 // http://localhost:3000/isolated/exercise/01.js
 
 import * as React from 'react'
-// 💣 remove this import
-import Globe from '../globe'
 
-// 🐨 use React.lazy to create a Globe component which using a dynamic import
-// to get the Globe component from the '../globe' module.
+// Our app has a neat Globe component that shows the user where they are on the globe.
+// Cool right? It’s super duper fun.
+
+// But one day our product manager 👨‍💼 came along and said that users are complaining
+// the app is taking too long to load. We’re using several sizeable libraries to have
+// the really cool globe, but users only need to load it if they click the “show globe”
+// button and loading it ahead of time makes the app load slower.
+
+// So your job as a performance professional is to load the code on-demand so the user
+// doesn’t have to wait to see the checkbox.
+
+// For this one, you’ll need to open the final in isolation and open the Chrome DevTools
+// Network tab to watch the webpack chunks load when you click "show globe."
+// Your objective is to have the network load those same chunks so they’re not in the
+// bundle to begin with.
+
+// 💰 Here’s a quick tip: In the Network tab, there’s a dropdown for artificially
+// throttling your network speed. It defaults to “Online” but you can change it to “Fast 3G”,
+//  “Slow 3G”, etc.
+
+// Also, spend a bit of time playing with the coverage feature of the dev tools (as noted above).
+
+const Globe = React.lazy(() => import('../globe'))
 
 function App() {
   const [showGlobe, setShowGlobe] = React.useState(false)
 
-  // 🐨 wrap the code below in a <React.Suspense /> component
-  // with a fallback.
-  // 💰 try putting it in a few different places and observe how that
-  // impacts the user experience.
   return (
     <div
       style={{
@@ -35,13 +50,15 @@ function App() {
         {' show globe'}
       </label>
       <div style={{width: 400, height: 400}}>
-        {showGlobe ? <Globe /> : null}
+        <React.Suspense fallback={<div>Loading...</div>}>
+          {showGlobe ? <Globe /> : null}
+        </React.Suspense>
       </div>
     </div>
   )
 }
-// 🦉 Note that if you're not on the isolated page, then you'll notice that this
-// app actually already has a React.Suspense component higher up in the tree
-// where this component is rendered, so you *could* just rely on that one.
 
 export default App
+
+
+

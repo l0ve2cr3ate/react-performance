@@ -1,22 +1,25 @@
 // React.memo for reducing unnecessary re-renders
-// http://localhost:3000/isolated/exercise/03.js
+// Exercise 3 Extra Credit 2
 
 import * as React from 'react'
 import {useCombobox} from '../use-combobox'
 import {getItems} from '../workerized-filter-cities'
 import {useAsync, useForceRerender} from '../utils'
 
-// Exercise
-// In this exercise, pull up the React DevTools and observe when you click the
-// “force rerender” button, the Downshift, Menu, and ListItem components are all
-// re-rendered even though no DOM updates were needed. This is an unnecessary re-render
-// and a bottleneck in our application (especially if we want to start showing all of
-//  the results rather than just the first 100… I’ve heard rumors that the product
-// manager 👨‍💼 wants us to do that). If you enable 6x throttle on the CPU (under the
-// Performance tab in Chrome DevTools) then you’ll notice the issue is more stark.
+// 2. 💯 pass only primitive values
 
-// Your job is to optimize the Menu and ListItem components to be memoized via React.memo.
-// Make note of the before/after render times.
+// Wouldn’t it be even better to not have to provide our custom memoization comparator
+// function and still get the perf gains? Definitely! So an alternative approach is to
+// pass the pre-computed values for isSelected and isHighlighted to our ListItem.
+// That way they are primitive values and we can take advantage of React’s built-in
+// comparison function and remove ours altogether.
+
+// The additional benefit to this is when you select an item, only the selected item needs
+// a re-render.
+
+// So for this extra credit, try to accept an isSelected and isHighlighted prop to ListItem
+// so you don’t have to pass the frequently changing values for selectedItem and
+// highlightedIndex.
 
 function Menu({
   items,
@@ -33,8 +36,8 @@ function Menu({
           getItemProps={getItemProps}
           item={item}
           index={index}
-          selectedItem={selectedItem}
-          highlightedIndex={highlightedIndex}
+          isSelected={selectedItem?.id === item.id}
+          isHighlighted={highlightedIndex === index}
         >
           {item.name}
         </ListItem>
@@ -49,12 +52,10 @@ function ListItem({
   getItemProps,
   item,
   index,
-  selectedItem,
-  highlightedIndex,
+  isSelected,
+  isHighlighted,
   ...props
 }) {
-  const isSelected = selectedItem?.id === item.id
-  const isHighlighted = highlightedIndex === index
   return (
     <li
       {...getItemProps({
@@ -128,13 +129,3 @@ function App() {
 }
 
 export default App
-
-/*
-eslint
-  no-func-assign: 0,
-*/
-
-
-
-
-
