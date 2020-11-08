@@ -1,5 +1,5 @@
 // Fix "perf death by a thousand cuts"
-// http://localhost:3000/isolated/exercise/06.js
+// Exercise 6 Extra Credit 2
 
 import * as React from 'react'
 import {
@@ -10,20 +10,38 @@ import {
   updateGridCellState,
 } from '../utils'
 
-// Exercise 6
-// 👨‍💼 The product manager has heard complaints from users that typing in the <DogNameInput />
-// is extremely slow, especially on low-end devices and when there are lots of elements in
-// the data grid.
+// Extra Credit
+// 2. 💯 limit the work consuming components do
 
-// We’ve already memoized the <Grid /> and <Cell /> components, but it’s still slow.
-// So there’s still too much code running on every keystroke as the user types into the
-// <DogNameInput />. As it turns out, the state that the <DogNameInput /> is using is only
-// needed by the <DogNameInput /> and we can colocate that state. So let’s go ahead and take
-// that state out of the global context and put it within the <DogNameInput /> component.
+// If you open up the React DevTools Profiler and click one of the cells then you’ll notice
+// that all the Cells are re-rendering but only the one that was clicked will actually get
+// a state update. The re-render was completely unnecessary.
 
+// An alternative solution is to limit the amount of work consuming components have to do
+// and make it easier to determine whether a component needs to update. Conceptually, each
+// Cell in our example represents a different component you may have in your application.
+// Each of those components only cares about a slice of the state and not all of it.
+// Unfortunately, even though we’re memoizing the component itself with React.memo, whenever
+// we have a state update, each consumer needs to re-render so it can determine whether the
+// state update was something that matters to it.
+
+// So what if we make the Cell actually accept a cell prop and then put a middle-man component
+// in there that does the actual consuming of useAppState(). We could rename the Cell
+// component to CellImpl (Impl is short for “implementation"). And then the "middle-man”
+// component could be called Cell (which is the one that we actually expose for use).
+// That way if there’s a state update, Cell is re-rendered, and it forwards the cell to
+// CellImpl which is memoized and will therefore only re-render when cell changes.
+
+// You may find it easier to just undo all your work so far and start over from scratch to
+// implement this.
+
+// Be sure to double-check the experience and make sure your changes are actually improving
+// the situation. Sometimes this will help, and other times it doesn’t do much to help and
+// only leaves you with a more complex codebase for no reason!
 
 const AppStateContext = React.createContext()
 const AppDispatchContext = React.createContext()
+const DogContext = React.createContext()
 
 const initialGrid = Array.from({length: 100}, () =>
   Array.from({length: 100}, () => Math.random() * 100),
@@ -36,6 +54,17 @@ function appReducer(state, action) {
     }
     case 'UPDATE_GRID': {
       return {...state, grid: updateGridState(state.grid)}
+    }
+    default: {
+      throw new Error(`Unhandled action type: ${action.type}`)
+    }
+  }
+}
+
+function dogReducer(state, action) {
+  switch (action.type) {
+    case 'TYPED_IN_DOG_INPUT': {
+      return {...state, dogName: action.dogName}
     }
     default: {
       throw new Error(`Unhandled action type: ${action.type}`)
@@ -56,6 +85,14 @@ function AppProvider({children}) {
   )
 }
 
+function DogProvider({children}) {
+  const [state, dispatch] = React.useReducer(dogReducer, {
+    dogName: '',
+  })
+  const value = [state, dispatch]
+  return <DogContext.Provider value={value}>{children}</DogContext.Provider>
+}
+
 function useAppState() {
   const context = React.useContext(AppStateContext)
   if (!context) {
@@ -68,6 +105,14 @@ function useAppDispatch() {
   const context = React.useContext(AppDispatchContext)
   if (!context) {
     throw new Error('useAppDispatch must be used within the AppProvider')
+  }
+  return context
+}
+
+function useDogState() {
+  const context = React.useContext(DogContext)
+  if (!context) {
+    throw new Error('useDogState must be used within the DogProvider')
   }
   return context
 }
@@ -93,6 +138,12 @@ Grid = React.memo(Grid)
 function Cell({row, column}) {
   const state = useAppState()
   const cell = state.grid[row][column]
+
+  return <CellImpl row={row} column={column} cell={cell} />
+}
+Cell = React.memo(Cell)
+
+function CellImpl({row, column, cell}) {
   const dispatch = useAppDispatch()
   const handleClick = () => dispatch({type: 'UPDATE_GRID_CELL', row, column})
   return (
@@ -108,14 +159,18 @@ function Cell({row, column}) {
     </button>
   )
 }
-Cell = React.memo(Cell)
+
+CellImpl = React.memo(CellImpl)
 
 function DogNameInput() {
-  const [dogName, setDogName] = React.useState('')
+  const [state, dispatch] = useDogState()
+
+  const {dogName} = state
 
   function handleChange(event) {
     const newDogName = event.target.value
-    setDogName(newDogName)
+
+    dispatch({type: 'TYPED_IN_DOG_INPUT', dogName: newDogName})
   }
 
   return (
@@ -140,12 +195,14 @@ function App() {
   return (
     <div className="grid-app">
       <button onClick={forceRerender}>force rerender</button>
-      <AppProvider>
-        <div>
+      <div>
+        <DogProvider>
           <DogNameInput />
+        </DogProvider>
+        <AppProvider>
           <Grid />
-        </div>
-      </AppProvider>
+        </AppProvider>
+      </div>
     </div>
   )
 }
@@ -156,4 +213,3 @@ export default App
 eslint
   no-func-assign: 0,
 */
-

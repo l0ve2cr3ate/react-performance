@@ -10,6 +10,21 @@ import {
   updateGridCellState,
 } from '../utils'
 
+// Exercise
+// This exercise is a bit contrived to make it simpler for you. Some apps do have data grids
+// like this and those can definitely suffer from these performance problems, but you can
+//  also imagine that each square in this app is an individual component in your app that’s
+// connected to the global store (either directly or via its parent’s connection to the store).
+
+// Our 👨‍💼 product manager noticed a performance problem. Whenever you click on the “force
+// render” button, the click is slow. What’s frustrating about this is we’ve applied
+// React.memo to all our expensive components so it’s confusing why that update is slow
+// when none of the components should really be re-rendering. See if you can figure out
+// why and fix that by memoizing the context value.
+
+// Make sure to profile before/after to see whether you actually fixed the problem.
+
+
 const AppStateContext = React.createContext()
 
 const initialGrid = Array.from({length: 100}, () =>
@@ -38,8 +53,8 @@ function AppProvider({children}) {
     dogName: '',
     grid: initialGrid,
   })
-  // 🐨 memoize this value with React.useMemo
-  const value = [state, dispatch]
+
+  const value = React.useMemo(() => [state, dispatch], [state, dispatch])
   return (
     <AppStateContext.Provider value={value}>
       {children}
@@ -140,3 +155,5 @@ export default App
 eslint
   no-func-assign: 0,
 */
+
+

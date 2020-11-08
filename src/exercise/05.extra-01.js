@@ -1,5 +1,5 @@
-// Fix "perf death by a thousand cuts"
-// http://localhost:3000/isolated/exercise/06.js
+// Optimize context value
+// Exercise 5 Extra Credit 1
 
 import * as React from 'react'
 import {
@@ -10,17 +10,20 @@ import {
   updateGridCellState,
 } from '../utils'
 
-// Exercise 6
-// 👨‍💼 The product manager has heard complaints from users that typing in the <DogNameInput />
-// is extremely slow, especially on low-end devices and when there are lots of elements in
-// the data grid.
+// Extra Credit
+// 1. 💯 separate the contexts
 
-// We’ve already memoized the <Grid /> and <Cell /> components, but it’s still slow.
-// So there’s still too much code running on every keystroke as the user types into the
-// <DogNameInput />. As it turns out, the state that the <DogNameInput /> is using is only
-// needed by the <DogNameInput /> and we can colocate that state. So let’s go ahead and take
-// that state out of the global context and put it within the <DogNameInput /> component.
+// After we fixed that performance problem with our app, the 👨‍💼 product manager was so
+// happy because now he’s confident we can fix this next performance problem. When you
+// click one of the cells, it updates that individual cell. But the Grid itself is
+// re-rendering as well!
 
+// The reason this is happening is because the Grid consumes the provider value and
+// when the state changes, that triggers a re-render of all consumers. But wait… the Grid
+// doesn’t really depend on the part of the value that’s changing, right? It only needs
+// the dispatch function. So what if we put the state in one context provider and
+// the dispatch function in another context provider? Hmm…. Give that a try and see
+// if you can get things to run faster.
 
 const AppStateContext = React.createContext()
 const AppDispatchContext = React.createContext()
@@ -31,6 +34,9 @@ const initialGrid = Array.from({length: 100}, () =>
 
 function appReducer(state, action) {
   switch (action.type) {
+    case 'TYPED_IN_DOG_INPUT': {
+      return {...state, dogName: action.dogName}
+    }
     case 'UPDATE_GRID_CELL': {
       return {...state, grid: updateGridCellState(state.grid, action)}
     }
@@ -45,6 +51,7 @@ function appReducer(state, action) {
 
 function AppProvider({children}) {
   const [state, dispatch] = React.useReducer(appReducer, {
+    dogName: '',
     grid: initialGrid,
   })
   return (
@@ -67,7 +74,7 @@ function useAppState() {
 function useAppDispatch() {
   const context = React.useContext(AppDispatchContext)
   if (!context) {
-    throw new Error('useAppDispatch must be used within the AppProvider')
+    throw new Error('useDispatchState must be used within the AppProvider')
   }
   return context
 }
@@ -92,8 +99,8 @@ Grid = React.memo(Grid)
 
 function Cell({row, column}) {
   const state = useAppState()
-  const cell = state.grid[row][column]
   const dispatch = useAppDispatch()
+  const cell = state.grid[row][column]
   const handleClick = () => dispatch({type: 'UPDATE_GRID_CELL', row, column})
   return (
     <button
@@ -111,11 +118,13 @@ function Cell({row, column}) {
 Cell = React.memo(Cell)
 
 function DogNameInput() {
-  const [dogName, setDogName] = React.useState('')
+  const state = useAppState()
+  const dispatch = useAppDispatch()
+  const {dogName} = state
 
   function handleChange(event) {
     const newDogName = event.target.value
-    setDogName(newDogName)
+    dispatch({type: 'TYPED_IN_DOG_INPUT', dogName: newDogName})
   }
 
   return (
@@ -135,6 +144,7 @@ function DogNameInput() {
     </form>
   )
 }
+
 function App() {
   const forceRerender = useForceRerender()
   return (
@@ -156,4 +166,3 @@ export default App
 eslint
   no-func-assign: 0,
 */
-

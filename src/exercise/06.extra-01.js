@@ -1,5 +1,5 @@
 // Fix "perf death by a thousand cuts"
-// http://localhost:3000/isolated/exercise/06.js
+// Exercise 6 Extra Credit 1
 
 import * as React from 'react'
 import {
@@ -10,20 +10,21 @@ import {
   updateGridCellState,
 } from '../utils'
 
-// Exercise 6
-// 👨‍💼 The product manager has heard complaints from users that typing in the <DogNameInput />
-// is extremely slow, especially on low-end devices and when there are lots of elements in
-// the data grid.
+// Extra Credit
+// 1. 💯 separate contexts
 
-// We’ve already memoized the <Grid /> and <Cell /> components, but it’s still slow.
-// So there’s still too much code running on every keystroke as the user types into the
-// <DogNameInput />. As it turns out, the state that the <DogNameInput /> is using is only
-// needed by the <DogNameInput /> and we can colocate that state. So let’s go ahead and take
-// that state out of the global context and put it within the <DogNameInput /> component.
+// Let’s say that the state in the <DogNameInput /> does need to be global because it’s
+// accessed by many components in the app. So what do we do? Well, another way to solve
+// this is by separating our app’s state logically into domain-specific context providers.
+// So we can put the state for the dog input and the state for the rest of our app in
+// different context providers and when the dog input updates, the grid doesn’t need to update.
 
+// So for this extra credit, try to make that work. You may find it easier to just undo all
+// your work so far and start over from scratch to implement this.
 
 const AppStateContext = React.createContext()
 const AppDispatchContext = React.createContext()
+const DogContext = React.createContext()
 
 const initialGrid = Array.from({length: 100}, () =>
   Array.from({length: 100}, () => Math.random() * 100),
@@ -36,6 +37,17 @@ function appReducer(state, action) {
     }
     case 'UPDATE_GRID': {
       return {...state, grid: updateGridState(state.grid)}
+    }
+    default: {
+      throw new Error(`Unhandled action type: ${action.type}`)
+    }
+  }
+}
+
+function dogReducer(state, action) {
+  switch (action.type) {
+    case 'TYPED_IN_DOG_INPUT': {
+      return {...state, dogName: action.dogName}
     }
     default: {
       throw new Error(`Unhandled action type: ${action.type}`)
@@ -56,6 +68,14 @@ function AppProvider({children}) {
   )
 }
 
+function DogProvider({children}) {
+  const [state, dispatch] = React.useReducer(dogReducer, {
+    dogName: '',
+  })
+  const value = [state, dispatch]
+  return <DogContext.Provider value={value}>{children}</DogContext.Provider>
+}
+
 function useAppState() {
   const context = React.useContext(AppStateContext)
   if (!context) {
@@ -68,6 +88,14 @@ function useAppDispatch() {
   const context = React.useContext(AppDispatchContext)
   if (!context) {
     throw new Error('useAppDispatch must be used within the AppProvider')
+  }
+  return context
+}
+
+function useDogState() {
+  const context = React.useContext(DogContext)
+  if (!context) {
+    throw new Error('useDogState must be used within the DogProvider')
   }
   return context
 }
@@ -111,11 +139,14 @@ function Cell({row, column}) {
 Cell = React.memo(Cell)
 
 function DogNameInput() {
-  const [dogName, setDogName] = React.useState('')
+  const [state, dispatch] = useDogState()
+
+  const {dogName} = state
 
   function handleChange(event) {
     const newDogName = event.target.value
-    setDogName(newDogName)
+
+    dispatch({type: 'TYPED_IN_DOG_INPUT', dogName: newDogName})
   }
 
   return (
@@ -140,20 +171,16 @@ function App() {
   return (
     <div className="grid-app">
       <button onClick={forceRerender}>force rerender</button>
-      <AppProvider>
-        <div>
+      <div>
+        <DogProvider>
           <DogNameInput />
+        </DogProvider>
+        <AppProvider>
           <Grid />
-        </div>
-      </AppProvider>
+        </AppProvider>
+      </div>
     </div>
   )
 }
 
 export default App
-
-/*
-eslint
-  no-func-assign: 0,
-*/
-
